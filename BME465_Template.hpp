@@ -55,7 +55,7 @@ class MyFrame : public wxFrame
 		// image protos
 		void OnFilter( wxCommandEvent& event );
 		void OnPaint( wxPaintEvent& event);
-		void OnScale(wxCommandEvent& event);
+		void OnTransform(wxCommandEvent& event);
 		void OnToGray(wxCommandEvent& event);
 	
 		// image pointers
@@ -66,8 +66,10 @@ class MyFrame : public wxFrame
 		DECLARE_EVENT_TABLE()
 		
 		// area prototypes
-		void OnAreaCalculation ( wxCommandEvent& event ) ;
-		void OnLButton ( wxMouseEvent& event ) ;
+		void OnAreaCalculation(wxCommandEvent& event);
+		void OnAreaFilter(wxCommandEvent& event);
+		void OnLButton(wxMouseEvent& event);
+		void OnDrag(wxMouseEvent& event);
 		
 		// area vars
 		int areaindex ;
@@ -77,6 +79,11 @@ class MyFrame : public wxFrame
 		bool bAreaCalculation ;
 		bool bleftDown ;
 		bool bRed ;
+		
+		// area filter vars
+		bool areaFilter;
+		wxPoint* areaFilterStart;
+		wxPoint* areaFilterEnd;
 };
 
 // constants
@@ -108,8 +115,9 @@ enum
 	IMAGE_ROTATE_HUE_RIGHT 	= 206,
 	IMAGE_ROTATE_HUE_LEFT 	= 207,
 
-	ID_ToGray = 200,
-	ID_AreaCalculation = 300,
+	ID_ToGray = 300,
+	ID_AreaCalculation = 301,
+	ID_AreaFilter = 302,
 
 	// about - special mac case "Apple Menu"
 	MENU_HELP_ABOUT = wxID_ABOUT

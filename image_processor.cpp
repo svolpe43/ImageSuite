@@ -5,115 +5,8 @@
 #include <vector> //FOR MEDIAN FILTER
 #include <algorithm> //FOR SORT()
 
-// Implementation of the routines
-void wxImage2grayBuffer(const wxImage* img, int* buffer)
-{
-    unsigned long pix_index = 0, byte_index=0;
-    unsigned long buffer_len;
-    unsigned char* img_buffer;
-    
-    buffer_len = img->GetWidth()* img->GetHeight();
-    img_buffer = img->GetData();
-        
-    for( pix_index=0, byte_index=0; pix_index<buffer_len; pix_index++ )
-    {
-        int sum = 0;
-        sum = img_buffer[byte_index++];
-        sum += img_buffer[byte_index++];
-        sum += img_buffer[byte_index++];
-        
-        buffer[pix_index] = sum/3;
-    }
-    
-    return;
-} // end of wxImage2grayBuffer(...)
-
-wxImage* grayBuffer2wxImage(const int* buffer, int width, int height)
-{
-    unsigned long pix_index = 0, byte_index=0;
-    unsigned long buffer_len;
-    unsigned char* img_buffer;
-    
-    wxImage* img = new wxImage(width,height);
-    buffer_len = width*height;
-    img_buffer = new unsigned char[width*height*3];
-            
-    for( pix_index=0, byte_index=0; pix_index<buffer_len; pix_index++ )
-    {
-        img_buffer[byte_index++] = (unsigned char)buffer[pix_index];
-        img_buffer[byte_index++] = (unsigned char)buffer[pix_index];
-        img_buffer[byte_index++] = (unsigned char)buffer[pix_index];
-    }
-    
-    img->SetData(img_buffer);
-        
-    return img;    
-} // end of grayBuffer2wxImage(...)
-wxImage* colorBuffer2wxImage(const int* buffer, int width, int height)
-{
-    unsigned long pix_index = 0, byte_index=0;
-    unsigned long buffer_len;
-    unsigned char* img_buffer;
-	double PI = 3.1415; 
-    
-    wxImage* img = new wxImage(width,height);
-    buffer_len = width*height;
-    img_buffer = new unsigned char[width*height*3];
-            
-    for( pix_index=0, byte_index=0; pix_index<buffer_len; pix_index++ )
-    {
-        if(buffer[pix_index] > 0)
-        {
-                img_buffer[byte_index++] = 255-(unsigned char)(buffer[pix_index]*255/PI);
-                img_buffer[byte_index++] = (unsigned char)(0);
-                img_buffer[byte_index++] = 255-(unsigned char)(buffer[pix_index]*255/PI);
-        }
-        if(buffer[pix_index] < 0)
-        {
-                img_buffer[byte_index++] = (unsigned char)(0);
-                img_buffer[byte_index++] = (unsigned char)(buffer[pix_index]*255/PI);
-                img_buffer[byte_index++] = (unsigned char)(0);
-        }
-        if(buffer[pix_index] == 0)
-        {
-                img_buffer[byte_index++] = (unsigned char)(0);
-                img_buffer[byte_index++] = (unsigned char)(0);
-                img_buffer[byte_index++] = (unsigned char)(0);
-        }
-        
-                
-    }
-    
-    img->SetData(img_buffer);
-        
-    return img;    
-} // end of grayBuffer2wxImage(...)
-
-
-void wxImage2colorBuffer(const wxImage* img, int* buffer)
-{
-    unsigned long pix_index = 0, byte_index=0;
-    unsigned long buffer_len;
-    unsigned char* img_buffer;
-    
-	double PI = 3.1415;
-    buffer_len = img->GetWidth()* img->GetHeight();
-    img_buffer = img->GetData();
-        
-    for( pix_index=0, byte_index=0; pix_index<buffer_len; pix_index++ )
-    {
-        int sum = 0;
-        sum = img_buffer[byte_index++]*255/PI;
-        sum += img_buffer[byte_index++]*255/PI;
-        sum += img_buffer[byte_index++]*255/PI;
-        
-        buffer[pix_index] = 255-sum/3;
-    }
-    
-    return;
-}
-
-wxImage * LowPass(wxImage *pImage)
+// low pass filter
+wxImage * LowPass(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end)
 {
     int x,y;
     int height = pImage->GetHeight();
@@ -138,8 +31,13 @@ wxImage * LowPass(wxImage *pImage)
         			 +float(pTemp[index-1])+float(pTemp[index])+float(pTemp[index+1])
         			 +float(pTemp[index+width-1])+float(pTemp[index+width])+float(pTemp[index+width+1])
         			);
-        		pResult[(y)*width+(x)]=(int)(value);
-   		    }
+					
+				// handle the filtered area
+				if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end))
+					pResult[(y)*width+(x)]=(int)(value);
+				else
+					pResult[y*width+x]=pTemp[y*width+x];
+			}
    		    else
    		    {
                 pResult[y*width+x]=pTemp[y*width+x];
@@ -153,8 +51,8 @@ wxImage * LowPass(wxImage *pImage)
     return temp;
 }
 
-
-wxImage * HighPass(wxImage *pImage)  //Highpass filter code
+// high pass filter
+wxImage * HighPass(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end)
 {
     int x,y;
     int height = pImage->GetHeight();
@@ -179,7 +77,12 @@ wxImage * HighPass(wxImage *pImage)  //Highpass filter code
         			 +float(pTemp[index-1])-4*float(pTemp[index])+float(pTemp[index+1])
         			 +0*float(pTemp[index+width-1])+float(pTemp[index+width])+0*float(pTemp[index+width+1])
         			);
-        		pResult[(y)*width+(x)]=abs(pTemp[y*width+x]-(int)(value));
+					
+				// handle the filtered area
+				if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end))
+					pResult[(y)*width+(x)]=abs(pTemp[y*width+x]-(int)(value));
+				else
+					pResult[y*width+x]=pTemp[y*width+x];
    		    }
    		    else
    		    {
@@ -193,7 +96,9 @@ wxImage * HighPass(wxImage *pImage)  //Highpass filter code
     delete pResult;
     return temp;
 }
-wxImage * EdgeDet(wxImage *pImage)  //Edge Detecting Filter code
+
+// edge detection
+wxImage * EdgeDet(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end)
 {
     int x,y;
     int height = pImage->GetHeight();
@@ -221,11 +126,17 @@ wxImage * EdgeDet(wxImage *pImage)  //Edge Detecting Filter code
 					pTemp[index-width+1]*(-1)+pTemp[index+width-1]+pTemp[index+width]*2+pTemp[index+
 					width+1]) 
 					);
-					if(value<0)
-						value=0;
-					if(value>255)
-						value=64;
-					pResult[y*width+x]=(int)value;
+					
+					if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end)){
+							if(value<0)
+								value=0;
+							if(value>255)
+								value=64;
+							pResult[y*width+x]=(int)value;
+					}else
+							pResult[y*width+x]=pTemp[y*width+x];
+					
+					
    		    }
    		    else
    		    {
@@ -239,7 +150,9 @@ wxImage * EdgeDet(wxImage *pImage)  //Edge Detecting Filter code
     delete pResult;
     return temp;
 }
-wxImage * Binarize(wxImage *pImage)  //Binarize Filter code
+
+// 255 or 0 pixels
+wxImage * Binarize(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end)
 {
     int x,y;
     int height = pImage->GetHeight();
@@ -267,11 +180,15 @@ wxImage * Binarize(wxImage *pImage)  //Binarize Filter code
 					pTemp[index-width+1]*(-1)+pTemp[index+width-1]+pTemp[index+width]*2+pTemp[index+
 					width+1]) 
 					);
-					if(value<127)
-						value=0;
-					if(value>127)
-						value=255;
-					pResult[y*width+x]=(int)value;
+					
+					if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end)){
+						if(value<127)
+							value=0;
+						if(value>127)
+							value=255;
+						pResult[y*width+x]=(int)value;
+					}else
+						pResult[y*width+x]=pTemp[y*width+x];
    		    }
    		    else
    		    {
@@ -285,7 +202,9 @@ wxImage * Binarize(wxImage *pImage)  //Binarize Filter code
     delete pResult;
     return temp;
 }
-wxImage * nonLinear(wxImage *pImage, int type)  //nonLinear filter code
+
+// 3 non-linear filters
+wxImage * nonLinear(wxImage *pImage, int type, bool areaFilter, wxPoint *start, wxPoint *end)
 {
     int x,y;
     int height = pImage->GetHeight();
@@ -314,16 +233,23 @@ for ( x = 0 ; x < width ; x++) {
            valArray [ 7 ] = pTemp [ index + width ] ;
            valArray [ 8 ] = pTemp [ index + width + 1 ] ;
            sort ( valArray . begin ( ) , valArray . end ( ) ) ;
-		   switch ( type ) {
-               case MEDIAN_FILTER : value = valArray [ 4 ] ; break ; // Part of code that chooses pixel
-               case MINIMUM_FILTER : value = valArray [ 0 ] ; break ;
-			   case MAXIMUM_FILTER : value = valArray [ 8 ] ; break ;
-             }
-              if ( value > 255 )
-                value = 255;
-			 else if ( value < 0 )
-                value = 0;
-             pResult [ index ] = ( int ) value ;
+			switch ( type ) {
+				case MEDIAN_FILTER : value = valArray [ 4 ] ; break ; // Part of code that chooses pixel
+				case MINIMUM_FILTER : value = valArray [ 0 ] ; break ;
+				case MAXIMUM_FILTER : value = valArray [ 8 ] ; break ;
+			}
+			
+			
+			if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end)){
+				if ( value > 255 )
+					value = 255;
+				else if ( value < 0 )
+					value = 0;
+				pResult [ index ] = ( int ) value;
+				}
+			else
+				pResult[y*width+x]=pTemp[y*width+x];
+			
          }
          else {
 	 pResult [ index ] = pTemp [ index ] ;
@@ -335,6 +261,17 @@ for ( x = 0 ; x < width ; x++) {
     temp = grayBuffer2wxImage( pResult, width,height );
     delete pResult;
     return temp;
+}
+
+// tells whether the needle is inside or outside of the
+// rectangle created by the start and end points
+// only handles end lower and to the right of start
+bool inFilterArea(wxPoint needle, wxPoint start, wxPoint end)
+{
+	bool inXRange = needle.x < end.x && needle.x > start.x;
+	bool inYRange = needle.y < end.y - 25 && needle.y > start.y - 25;
+	
+	return inXRange && inYRange;
 }
 
 // rotates the image
@@ -395,4 +332,115 @@ wxImage *copy(wxImage *masterImage) {
     temp = grayBuffer2wxImage( pResult, width,height );
     delete pResult;
     return temp;
-} 
+}
+
+// image to gray scale buffer
+void wxImage2grayBuffer(const wxImage* img, int* buffer)
+{
+    unsigned long pix_index = 0, byte_index=0;
+    unsigned long buffer_len;
+    unsigned char* img_buffer;
+    
+    buffer_len = img->GetWidth()* img->GetHeight();
+    img_buffer = img->GetData();
+        
+    for( pix_index=0, byte_index=0; pix_index<buffer_len; pix_index++ )
+    {
+        int sum = 0;
+        sum = img_buffer[byte_index++];
+        sum += img_buffer[byte_index++];
+        sum += img_buffer[byte_index++];
+        
+        buffer[pix_index] = sum/3;
+    }
+    
+    return;
+}
+
+// gray image to a wxImage
+wxImage* grayBuffer2wxImage(const int* buffer, int width, int height)
+{
+    unsigned long pix_index = 0, byte_index=0;
+    unsigned long buffer_len;
+    unsigned char* img_buffer;
+    
+    wxImage* img = new wxImage(width,height);
+    buffer_len = width*height;
+    img_buffer = new unsigned char[width*height*3];
+            
+    for( pix_index=0, byte_index=0; pix_index<buffer_len; pix_index++ )
+    {
+        img_buffer[byte_index++] = (unsigned char)buffer[pix_index];
+        img_buffer[byte_index++] = (unsigned char)buffer[pix_index];
+        img_buffer[byte_index++] = (unsigned char)buffer[pix_index];
+    }
+    
+    img->SetData(img_buffer);
+        
+    return img;    
+}
+
+// color image to a wxImage
+wxImage* colorBuffer2wxImage(const int* buffer, int width, int height)
+{
+    unsigned long pix_index = 0, byte_index=0;
+    unsigned long buffer_len;
+    unsigned char* img_buffer;
+	double PI = 3.1415; 
+    
+    wxImage* img = new wxImage(width,height);
+    buffer_len = width*height;
+    img_buffer = new unsigned char[width*height*3];
+            
+    for( pix_index=0, byte_index=0; pix_index<buffer_len; pix_index++ )
+    {
+        if(buffer[pix_index] > 0)
+        {
+                img_buffer[byte_index++] = 255-(unsigned char)(buffer[pix_index]*255/PI);
+                img_buffer[byte_index++] = (unsigned char)(0);
+                img_buffer[byte_index++] = 255-(unsigned char)(buffer[pix_index]*255/PI);
+        }
+        if(buffer[pix_index] < 0)
+        {
+                img_buffer[byte_index++] = (unsigned char)(0);
+                img_buffer[byte_index++] = (unsigned char)(buffer[pix_index]*255/PI);
+                img_buffer[byte_index++] = (unsigned char)(0);
+        }
+        if(buffer[pix_index] == 0)
+        {
+                img_buffer[byte_index++] = (unsigned char)(0);
+                img_buffer[byte_index++] = (unsigned char)(0);
+                img_buffer[byte_index++] = (unsigned char)(0);
+        }
+        
+                
+    }
+    
+    img->SetData(img_buffer);
+        
+    return img;    
+}
+
+
+void wxImage2colorBuffer(const wxImage* img, int* buffer)
+{
+    unsigned long pix_index = 0, byte_index=0;
+    unsigned long buffer_len;
+    unsigned char* img_buffer;
+    
+	double PI = 3.1415;
+    buffer_len = img->GetWidth()* img->GetHeight();
+    img_buffer = img->GetData();
+        
+    for( pix_index=0, byte_index=0; pix_index<buffer_len; pix_index++ )
+    {
+        int sum = 0;
+        sum = img_buffer[byte_index++]*255/PI;
+        sum += img_buffer[byte_index++]*255/PI;
+        sum += img_buffer[byte_index++]*255/PI;
+        
+        buffer[pix_index] = 255-sum/3;
+    }
+    
+    return;
+}
