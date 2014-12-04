@@ -12,25 +12,34 @@
 #include "wx/image.h"
 
 enum {               // Added enumeration table for nonlinear filters
-MEDIAN_FILTER = 105,
-MINIMUM_FILTER = 106,
-MAXIMUM_FILTER = 107
+MEDIAN_FILTER = 400,
+MINIMUM_FILTER = 401,
+MAXIMUM_FILTER = 402
 };
 
+// helpers
 void wxImage2grayBuffer(const wxImage* img, int* buffer);
 wxImage* grayBuffer2wxImage(const int* buffer, int width, int height);
 void wxImage2colorBuffer(const wxImage* img, int* buffer);
 wxImage* colorBuffer2wxImage(const int* buffer, int width, int height);
-wxImage* LowPass(wxImage *pImage);
-wxImage* HighPass(wxImage *pImage);
+
+// filters
+wxImage* LowPass(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end);
+wxImage* HighPass(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end);
+wxImage* nonLinear(wxImage *pImage, int type, bool areaFilter, wxPoint *start, wxPoint *end);
+wxImage* EdgeDet(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end);
+wxImage* Binarize(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end);
+
+bool inFilterArea(wxPoint needle, wxPoint start, wxPoint end);
+
+// undo
 wxImage* copy(wxImage *masterImage);
-wxImage* nonLinear(wxImage *pImage, int type);
-wxImage* EdgeDet(wxImage *pImage);
-wxImage* Binarize(wxImage *pImage);
 
 // transforms
 wxImage* rotate(wxImage *pImage, bool right);
 wxImage* scale(wxImage *pImage, float factor);
 wxImage* mirror(wxImage *pImage);
 wxImage* rotateHue(wxImage *pImage, bool right);
+
+int static const toolheight = 50;
 #endif

@@ -91,7 +91,7 @@ extraResourceOptions=
 2=BME465_Template_private.rc
 [Other]
 [History]
-BME465_Template.hpp,2522
-image_processor.hpp,470
-image_processor.cpp,3402
-BME465_Template.cpp,6265
+image_processor.cpp,8728
+BME465_Template.hpp,2298
+image_processor.hpp,607
+BME465_Template.cpp,1706

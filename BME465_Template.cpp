@@ -16,6 +16,7 @@
 #include "resources/min.xpm"
 #include "resources/undo.xpm"
 #include "wx/image.h"
+#include "wx/wfstream.h"
 
 // event tables and other macros for wxWindows
 BEGIN_EVENT_TABLE(MyFrame, wxFrame)
@@ -38,18 +39,22 @@ BEGIN_EVENT_TABLE(MyFrame, wxFrame)
 	EVT_MENU(MENU_FILTER_BIN, MyFrame::OnFilter)
 	
 	//transform commands
-	EVT_MENU(IMAGE_SCALE_UP, MyFrame::OnScale)
-	EVT_MENU(IMAGE_SCALE_DOWN, MyFrame::OnScale)
-	EVT_MENU(IMAGE_ROTATE_RIGHT, MyFrame::OnScale)
-	EVT_MENU(IMAGE_ROTATE_LEFT, MyFrame::OnScale)
-	EVT_MENU(IMAGE_MIRROR, MyFrame::OnScale)
-	EVT_MENU(IMAGE_ROTATE_HUE_LEFT, MyFrame::OnScale)
-	EVT_MENU(IMAGE_ROTATE_HUE_RIGHT, MyFrame::OnScale)
+	EVT_MENU(IMAGE_SCALE_UP, MyFrame::OnTransform)
+	EVT_MENU(IMAGE_SCALE_DOWN, MyFrame::OnTransform)
+	EVT_MENU(IMAGE_ROTATE_RIGHT, MyFrame::OnTransform)
+	EVT_MENU(IMAGE_ROTATE_LEFT, MyFrame::OnTransform)
+	EVT_MENU(IMAGE_MIRROR, MyFrame::OnTransform)
+	EVT_MENU(IMAGE_ROTATE_HUE_LEFT, MyFrame::OnTransform)
+	EVT_MENU(IMAGE_ROTATE_HUE_RIGHT, MyFrame::OnTransform)
 	
 	// area calculation
-	EVT_LEFT_DOWN(MyFrame::OnLButton)
 	EVT_MENU(ID_AreaCalculation, MyFrame::OnAreaCalculation)
-
+	EVT_MENU(ID_AreaFilter, MyFrame::OnAreaFilter)
+		
+	EVT_LEFT_DOWN(MyFrame::OnLButton)
+	EVT_MOTION(MyFrame::OnDrag)
+	// EVT_LEFT_UP(MyFrame::OnDragRelease)
+	
 	EVT_MENU(MENU_FILTER_UNDO, MyFrame::OnFilter)
 	END_EVENT_TABLE()
 
@@ -91,31 +96,32 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	
 	// build file menu
     fileMenu->Append(MENU_FILE_OPEN, _T("&Open...\tCtrl-O"), _T("Open a new Image"));
-	fileMenu->Append(MENU_FILE_SAVE, _T("&Save\tCtrl-s"), _T("Save the image"));
-    fileMenu->Append(MENU_FILE_QUIT, _T("E&xit\tAlt-X"), _T("Quit this program"));
+	fileMenu->Append(MENU_FILE_SAVE, _T("&Save\tCtrl-S"), _T("Save the image"));
+    fileMenu->Append(MENU_FILE_QUIT, _T("E&xit\tCtrl-X"), _T("Quit this program"));
     
     //build filter menu
-    filterMenu->Append(MENU_FILTER_LP, _T("&Lowpass Filter\tAlt-L"), _T("Lowpass Filter"));
-	filterMenu->Append(MENU_FILTER_HP, _T("&Highpass Filter\tAlt-H"), _T("Highpass Filter"));
-	filterMenu->Append(MENU_FILTER_MEDIAN, _T("&Median Filter\tAlt-M"), _T("Median Filter"));
-	filterMenu->Append(MENU_FILTER_MINIMUM, _T("&Minimum Filter\tAlt-I"), _T("Minimum Filter"));
-	filterMenu->Append(MENU_FILTER_MAXIMUM, _T("&Maximum Filter\tAlt-J"), _T("Maximum Filter"));
-	filterMenu->Append(MENU_FILTER_EDGE, _T("&Edge Detecting Filter\tAlt-E"), _T("Edge Detecting Filter"));
-	filterMenu->Append(MENU_FILTER_BIN, _T("&Binarize Filter\tAlt-E"), _T("Binarize Filter"));
-	filterMenu->Append (ID_AreaCalculation , _T ( "&Area Calculation \tAlt -A" ), _T ( "<- Apply area calculation "));
+    filterMenu->Append(MENU_FILTER_LP, _T("&Lowpass Filter\tAlt-Q"), _T("Lowpass Filter"));
+	filterMenu->Append(MENU_FILTER_HP, _T("&Highpass Filter\tAlt-W"), _T("Highpass Filter"));
+	filterMenu->Append(MENU_FILTER_MEDIAN, _T("&Median Filter\tAlt-E"), _T("Median Filter"));
+	filterMenu->Append(MENU_FILTER_MINIMUM, _T("&Minimum Filter\tAlt-R"), _T("Minimum Filter"));
+	filterMenu->Append(MENU_FILTER_MAXIMUM, _T("&Maximum Filter\tAlt-T"), _T("Maximum Filter"));
+	filterMenu->Append(MENU_FILTER_EDGE, _T("&Edge Detecting Filter\tAlt-Y"), _T("Edge Detecting Filter"));
+	filterMenu->Append(MENU_FILTER_BIN, _T("&Binarize Filter\tAlt-U"), _T("Binarize Filter"));
+	filterMenu->Append (ID_AreaCalculation , _T ( "&Area Calculation \tAlt-I" ), _T ( "<- Apply area calculation "));
+	filterMenu->Append (ID_AreaFilter , _T ( "&Area Filter \tAlt-O" ), _T ( "<- Apply area filter "));
 	
 	// build transform menu
-	transformMenu->Append(IMAGE_SCALE_UP, _T("&Scale up\tCtr-U"), _T("Scale up an image."));
-	transformMenu->Append(IMAGE_SCALE_DOWN, _T("&Scale down\tCtr-D"), _T("Scale down an image."));
-	transformMenu->Append(IMAGE_ROTATE_RIGHT, _T("&Rotate right\tCtr-R"), _T("Rotate an image right."));
-	transformMenu->Append(IMAGE_ROTATE_LEFT, _T("&Rotate left\tCtr-L"), _T("Rotate an image left."));
-	transformMenu->Append(IMAGE_MIRROR, _T("&Mirror image\tCtr-u"), _T("Mirros an image."));
-	transformMenu->Append(IMAGE_ROTATE_HUE_RIGHT, _T("&Rotate hue right\tCtr-d"), _T("Rotate hue of image right."));
-	transformMenu->Append(IMAGE_ROTATE_HUE_LEFT, _T("&Rotate hue left\tCtr-d"), _T("Rotate hue of image left."));
+	transformMenu->Append(IMAGE_SCALE_UP, _T("&Scale up\tCtrl-Q"), _T("Scale up an image."));
+	transformMenu->Append(IMAGE_SCALE_DOWN, _T("&Scale down\tCtrl-W"), _T("Scale down an image."));
+	transformMenu->Append(IMAGE_ROTATE_RIGHT, _T("&Rotate right\tCtrl-E"), _T("Rotate an image right."));
+	transformMenu->Append(IMAGE_ROTATE_LEFT, _T("&Rotate left\tCtrl-R"), _T("Rotate an image left."));
+	transformMenu->Append(IMAGE_MIRROR, _T("&Mirror image\tCtrl-T"), _T("Mirros an image."));
+	transformMenu->Append(IMAGE_ROTATE_HUE_RIGHT, _T("&Rotate hue right\tCtrl-Y"), _T("Rotate hue of image right."));
+	transformMenu->Append(IMAGE_ROTATE_HUE_LEFT, _T("&Rotate hue left\tCtrl-U"), _T("Rotate hue of image left."));
 
 	// build image menu
-	imageMenu->Append(MENU_FILTER,_T("Fil&ters\tAlt-F"), filterMenu, _T("Filter")),
-	imageMenu->Append(MENU_IMAGE, _T("&Transform\tAlt-T"), transformMenu, _T("Transform"));
+	imageMenu->Append(MENU_FILTER,_T("Fil&ters\tF"), filterMenu, _T("Filter")),
+	imageMenu->Append(MENU_IMAGE, _T("&Transform\tT"), transformMenu, _T("Transform"));
     
 	// build help menu
     helpMenu->Append(MENU_HELP_ABOUT, _T("&About...\tF1"), _T("Show about dialog"));
@@ -129,20 +135,33 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 #endif // wxUSE_MENUS
 
 #if wxUSE_TOOLBAR
-	// create the toolbar
-    wxToolBar *MyToolBar = new wxToolBar(this, wxID_ANY);
+	wxToolBar *Filters = new wxToolBar(this, wxTB_TEXT);
 
-	// add tools to the tool bar
-    MyToolBar->AddTool(MENU_FILTER_LP,lowpass_xpm, _T("LowPass Filter"));
-	MyToolBar->AddTool(MENU_FILTER_HP,highpass_xpm, _T("HighPass Filter"));
-	MyToolBar->AddTool(MENU_FILTER_MEDIAN,median_xpm, _T("Median Filter"));
-	MyToolBar->AddTool(MENU_FILTER_MINIMUM,min_xpm, _T("Minimum Filter"));
-	MyToolBar->AddTool(MENU_FILTER_MAXIMUM,max_xpm, _T("Maximum Filter"));
-	MyToolBar->AddTool(MENU_FILTER_EDGE,edge_xpm, _T("Edge Detecting Filter"));
-	MyToolBar->AddTool(MENU_FILTER_BIN,bin_xpm, _T("Binarize Filter"));
-	MyToolBar->AddTool(MENU_FILTER_UNDO,	undo_xpm,	_T("Undo"));
-    MyToolBar->Realize();
-    SetToolBar(MyToolBar);
+	// add tool filter tools
+    Filters->AddTool(MENU_FILTER_LP, _T("LowPass"), lowpass_xpm, _T("LowPass Filter"));
+	Filters->AddTool(MENU_FILTER_HP,highpass_xpm, _T("HighPass Filter"));
+	Filters->AddTool(MENU_FILTER_MEDIAN,median_xpm, _T("Median Filter"));
+	Filters->AddTool(MENU_FILTER_MINIMUM,min_xpm, _T("Minimum Filter"));
+	Filters->AddTool(MENU_FILTER_MAXIMUM,max_xpm, _T("Maximum Filter"));
+	Filters->AddTool(MENU_FILTER_EDGE,edge_xpm, _T("Edge Detecting Filter"));
+	Filters->AddTool(MENU_FILTER_BIN,bin_xpm, _T("Binarize Filter"));
+	Filters->SetMargins(50, 50);
+	Filters->Realize();
+	
+	wxToolBar *Transform = new wxToolBar(this, wxTB_TEXT);
+	Transform->AddTool(IMAGE_SCALE_UP, _T("Bigger"), max_xpm, _T("Maximum Filter"));
+	Transform->AddTool(IMAGE_SCALE_DOWN, edge_xpm, _T("Edge Detecting Filter"));
+	Transform->AddTool(IMAGE_ROTATE_RIGHT, bin_xpm, _T("Binarize Filter"));
+	Transform->AddTool(IMAGE_ROTATE_LEFT, undo_xpm,	_T("Undo"));
+	Transform->AddTool(IMAGE_MIRROR, edge_xpm, _T("Edge Detecting Filter"));
+	Transform->AddTool(MENU_FILTER_UNDO, undo_xpm,	_T("Undo"));
+	Transform->SetMargins(50, 50);
+	Transform->Realize();
+	
+	wxBoxSizer* box = new wxBoxSizer(wxVERTICAL);
+	box->Add(Filters, 0, wxID_ANY);
+	box->Add(Transform, 0, wxID_ANY);
+    SetSizer(box);
 #endif
 
 #if wxUSE_STATUSBAR
@@ -161,6 +180,10 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size, 
 	bleftDown = FALSE;
 	SetStatusText ("Out of Area", 1 );
 	dist = 9999;
+	
+	areaFilter = FALSE;
+	areaFilterStart = new wxPoint;
+	areaFilterEnd = new wxPoint;
 }
 
 // quit - true is to force the frame to close
@@ -183,7 +206,8 @@ void MyFrame::OnOpen(wxCommandEvent& WXUNUSED(event))
 {   
     wxString filePath;
     wxString fileName;
-    
+	
+	// create and open the file dialog
     wxFileDialog fileDialog(NULL, "Choose a file to load ...", "", "", "*.bmp;*.tif;*.gif;*.jpg", wxOPEN, wxDefaultPosition);
     if( fileDialog.ShowModal() == wxID_OK )
     {
@@ -212,7 +236,23 @@ void MyFrame::OnOpen(wxCommandEvent& WXUNUSED(event))
 // save the image file
 void MyFrame::OnSave(wxCommandEvent& event)
 {
-	return;
+	if( pImage == NULL ){
+		wxMessageBox("There is no file open!", _T("Error"), wxOK | wxICON_INFORMATION, this); 
+		return;
+	}
+
+	// create and open the file dialog
+	wxFileDialog fileDialog(NULL, "Save file.", "", "", "*.bmp;*.tif;*.gif;*.jpg", wxSAVE|wxOVERWRITE_PROMPT, wxDefaultPosition);
+	
+	// check if the user changed mind
+	if( fileDialog.ShowModal() == wxID_CANCEL )
+		return;
+	
+	// save the file
+	pImage->SaveFile(fileDialog.GetPath());
+	wxMessageBox("Your file was saved!", _T("Done"), wxOK | wxICON_INFORMATION, this);
+	
+    fileDialog.Destroy();   
 }
 
 // make image grey scale
@@ -238,7 +278,7 @@ void MyFrame::OnToGray(wxCommandEvent& event)
     return;    
 }
 
-// when drawing lines on the image
+// drawing the contents of the window
 void MyFrame::OnPaint(wxPaintEvent& event)
 {
     wxPaintDC dc(this);
@@ -251,18 +291,24 @@ void MyFrame::OnPaint(wxPaintEvent& event)
     }
     else
     {
-        wxBitmap tempBitmap(*pImage);
-        SetClientSize(tempBitmap.GetWidth() * 1.25, tempBitmap.GetHeight()*1.25+10 );
-		spacingW = ceilf((tempBitmap.GetWidth()*1.25 - tempBitmap.GetWidth())/2);
-		spacingH = ceilf((tempBitmap.GetHeight()*1.25 - tempBitmap.GetHeight())/2);
-        dc.DrawBitmap(tempBitmap,(int)spacingW,(int)spacingH+25, TRUE);
+		wxBitmap altered(*pImage);
+		wxBitmap original(*originalImage);
+        //SetClientSize(tempBitmap.GetWidth() * 1.25, tempBitmap.GetHeight()*1.25 + 10 );
+		//spacingW = ceilf((tempBitmap.GetWidth()*1.25 - tempBitmap.GetWidth())/2);
+		//spacingH = ceilf((tempBitmap.GetHeight()*1.25 - tempBitmap.GetHeight())/2);
+		
+		int height = (altered.GetHeight() > original.GetHeight()) ? altered.GetHeight() : original.GetHeight();
+		int width = altered.GetWidth() + original.GetWidth();
+		
+		SetClientSize(width, height + toolheight);
+        dc.DrawBitmap(altered, 0, toolheight, TRUE);
+		dc.DrawBitmap(original, (int)altered.GetWidth(), toolheight, TRUE);
     }
 
-	// clicked sensed
 	if ( bleftDown )
 		pointNumber = areaindex ;
 	// threshold range for closed rectangle
-	else if ( dist>=0 && dist<5){
+	else if(dist >= 0 && dist < 5){
 		pointNumber = areaindex ;
 		int idist = ( int )(floor(dist)) ;
 		SetStatusText ( wxString::Format( "The distance is %d" , idist ) , 0 ) ;
@@ -277,12 +323,11 @@ void MyFrame::OnPaint(wxPaintEvent& event)
 			acborder_pt [i].x = dc.LogicalToDeviceX(areaborder[i].x);
 			acborder_pt [i].y = dc.LogicalToDeviceY(areaborder[i].y);
 		}
-		dc.SetPen(* wxRED_PEN );
-		// dc.DrawLine (pt.x, pt.y ,acborderpt[areaindex].x, acborderpt [areaindex].y);
+		dc.SetPen(*wxRED_PEN);
 		dc.DrawLines(areaindex, acborder_pt);
 		if ( areaindex == pointNumber )
 		{
-			dc.DrawLine(acborder_pt[pointNumber - 1].x, acborder_pt[pointNumber -1].y ,acborder_pt[0].x, acborder_pt[0].y) ;
+			dc.DrawLine(acborder_pt[pointNumber - 1].x, acborder_pt[pointNumber -1].y ,acborder_pt[0].x, acborder_pt[0].y);
 		
 			float farea = 0;
 			int area;
@@ -309,6 +354,17 @@ void MyFrame::OnPaint(wxPaintEvent& event)
 		}
 		delete acborder_pt ;
 	}
+	
+	if(areaFilter)
+	{
+		dc.SetPen(*wxRED_PEN);
+		int width = areaFilterEnd->x - areaFilterStart->x;
+		int height = areaFilterEnd->y - areaFilterStart->y;
+		dc.DrawLine(areaFilterStart->x, areaFilterStart->y, areaFilterEnd->x, areaFilterStart->y);
+		dc.DrawLine(areaFilterEnd->x, areaFilterStart->y, areaFilterEnd->x, areaFilterEnd->y);
+		dc.DrawLine(areaFilterEnd->x, areaFilterEnd->y, areaFilterStart->x, areaFilterEnd->y);
+		dc.DrawLine(areaFilterStart->x, areaFilterEnd->y, areaFilterStart->x, areaFilterStart->y);
+	}
     return;    
 }
 
@@ -320,19 +376,20 @@ void MyFrame::OnFilter( wxCommandEvent& event )
         else 
         {
             wxImage *Filtered = NULL;
-            
             switch(event.GetId())
             {
-               case MENU_FILTER_LP: Filtered = LowPass(pImage); break;
-			   case MENU_FILTER_HP: Filtered = HighPass(pImage); break;
-			   case MENU_FILTER_UNDO: Filtered = copy(originalImage); break;
-		       case MENU_FILTER_MEDIAN: Filtered = nonLinear(pImage, MEDIAN_FILTER); break;
-			   case MENU_FILTER_MAXIMUM: Filtered = nonLinear(pImage, MAXIMUM_FILTER); break;
-		       case MENU_FILTER_MINIMUM: Filtered = nonLinear(pImage, MINIMUM_FILTER); break;
-			   case MENU_FILTER_EDGE: Filtered = EdgeDet(pImage); break;
-			   case MENU_FILTER_BIN: Filtered = Binarize(pImage); break;
+				// filters
+				case MENU_FILTER_LP: Filtered 		= 	LowPass(pImage, areaFilter, areaFilterStart, areaFilterEnd); break;
+				case MENU_FILTER_HP: Filtered 		= 	HighPass(pImage, areaFilter, areaFilterStart, areaFilterEnd); break;
+				case MENU_FILTER_MEDIAN: Filtered 	= 	nonLinear(pImage, MEDIAN_FILTER, areaFilter, areaFilterStart, areaFilterEnd); break;
+				case MENU_FILTER_MAXIMUM: Filtered 	= 	nonLinear(pImage, MAXIMUM_FILTER, areaFilter, areaFilterStart, areaFilterEnd); break;
+				case MENU_FILTER_MINIMUM: Filtered 	= 	nonLinear(pImage, MINIMUM_FILTER, areaFilter, areaFilterStart, areaFilterEnd); break;
+				case MENU_FILTER_EDGE: Filtered 		= 	EdgeDet(pImage, areaFilter, areaFilterStart, areaFilterEnd); break;
+				case MENU_FILTER_BIN: Filtered 		= 	Binarize(pImage, areaFilter, areaFilterStart, areaFilterEnd); break;
+			   
+				// undo
+				case MENU_FILTER_UNDO: Filtered 		= 	copy(originalImage); break;
 			}  
-            
             pImage = Filtered;
          }
     Refresh();
@@ -340,7 +397,7 @@ void MyFrame::OnFilter( wxCommandEvent& event )
 }
 
 // on transform
-void MyFrame::OnScale(wxCommandEvent& event)
+void MyFrame::OnTransform(wxCommandEvent& event)
 {
 	 if( pImage == NULL )
             wxMessageBox("Image is not loaded yet!", _T("Error"), wxOK | wxICON_INFORMATION,this);
@@ -364,16 +421,29 @@ void MyFrame::OnScale(wxCommandEvent& event)
     return;
 }
 
-// I never see these texts at all on calculation
+// puts us into area calculation or not
 void MyFrame::OnAreaCalculation( wxCommandEvent& WXUNUSED (event))
 {
 	bAreaCalculation = !bAreaCalculation;
 	if(bAreaCalculation)
-		SetStatusText("In Area", 1 );
+		SetStatusText("Out of area calculation.", 1);
 	else
-		SetStatusText("Out of Area", 1 );
-	Refresh( );
-	return ;
+		SetStatusText("In area calculation.", 1);
+	Refresh();
+	return;
+}
+
+// puts us into area filtering or not
+void MyFrame::OnAreaFilter(wxCommandEvent& WXUNUSED(event))
+{
+	areaFilter = !areaFilter;
+	if(areaFilter)
+		SetStatusText("In area filtering.", 0);
+	else
+		SetStatusText("Out of area filtering.", 0);
+	
+	Refresh();
+	return;
 }
 
 
@@ -383,26 +453,59 @@ void MyFrame::OnLButton(wxMouseEvent& event)
 	wxClientDC dc(this);
 	wxPoint area_pt(event.GetLogicalPosition(dc));
 
-	SetStatusText(wxString::Format("Last Point x:%d, y:%d)", area_pt.x, area_pt.y ), 0 );
+	SetStatusText(wxString::Format("Last Point x %d, y %d", area_pt.x, area_pt.y ), 0 );
 	
-	// check if we are in area calculation and null image
-	if (!bAreaCalculation)
-		return;
 	if (pImage == NULL)
 	{
 		wxMessageBox("Image is not loaded yet!", _T("Error"), wxOK | wxICON_INFORMATION, this );
 		return;
 	}
 	
-	// calculate the distance
-	areaborder[areaindex].x = area_pt.x;
-	areaborder[areaindex].y = area_pt.y + 27;
-	if ( areaindex > 0)
-		dist = sqrt((pow((double)(area_pt.x - areaborder[0].x), 2)+pow((double)(area_pt.y + 27 - areaborder[0].y), 2)));
-	SetStatusText(wxString::Format("This point x:%d,y:%d,distance:%d)", area_pt.x , area_pt.y, (int)dist), 1);
-		
-	// update vars
-	areaindex++;
+	// check if we are in area calculation and null image
+	if (bAreaCalculation){
+		// calculate the distance
+		areaborder[areaindex].x = area_pt.x;
+		areaborder[areaindex].y = area_pt.y + toolheight;
+		if ( areaindex > 0)
+			dist = sqrt((pow((double)(area_pt.x - areaborder[0].x), 2)+pow((double)(area_pt.y + 27 - areaborder[0].y), 2)));
+		SetStatusText(wxString::Format("This point x %d, y %d, distance %d", area_pt.x , area_pt.y, (int)dist), 1);
+			
+		// update vars
+		areaindex++;
+		Refresh();
+	}
+	
+	if(areaFilter)
+	{
+		areaFilterStart->x = areaFilterEnd->x = area_pt.x;
+		areaFilterStart->y = areaFilterStart->y = area_pt.y;
+		Refresh();
+	}
+}
+
+
+void MyFrame::OnDrag(wxMouseEvent& event)
+{
+	if (!areaFilter || !event.LeftIsDown())
+		return;
+	
+	wxClientDC dc(this);
+	wxPoint area_pt(event.GetLogicalPosition(dc));
+	
+	SetStatusText(wxString::Format("Start point (%d, %d)", areaFilterStart->x, areaFilterStart->y ), 1 );
+	
+	// check if we are in area calculation and null image
+	
+	if (pImage == NULL)
+	{
+		wxMessageBox("Image is not loaded yet!", _T("Error"), wxOK | wxICON_INFORMATION, this );
+		return;
+	}
+	
+	SetStatusText(wxString::Format("Dragged to (%d, %d)", area_pt.x, area_pt.y ), 0 );
+	
+	areaFilterEnd->x = area_pt.x;
+	areaFilterEnd->y = area_pt.y;
 	Refresh();
 }
 
