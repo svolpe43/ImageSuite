@@ -33,10 +33,14 @@ wxImage * LowPass(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end
         			);
 					
 				// handle the filtered area
-				if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end))
-					pResult[(y)*width+(x)]=(int)(value);
+				if(areaFilter)
+					if(inFilterArea(wxPoint(x, y), *start, *end))
+						pResult[(y)*width+(x)]=(int)(value);
+					else
+						pResult[y*width+x]=pTemp[y*width+x];
 				else
-					pResult[y*width+x]=pTemp[y*width+x];
+					pResult[(y)*width+(x)]=(int)(value);
+					
 			}
    		    else
    		    {
@@ -79,10 +83,13 @@ wxImage * HighPass(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *en
         			);
 					
 				// handle the filtered area
-				if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end))
-					pResult[(y)*width+(x)]=abs(pTemp[y*width+x]-(int)(value));
+				if(areaFilter)
+					if(inFilterArea(wxPoint(x, y), *start, *end))
+						pResult[(y)*width+(x)]=abs(pTemp[y*width+x]-(int)(value));
+					else
+						pResult[y*width+x]=pTemp[y*width+x];
 				else
-					pResult[y*width+x]=pTemp[y*width+x];
+					pResult[(y)*width+(x)]=abs(pTemp[y*width+x]-(int)(value));
    		    }
    		    else
    		    {
@@ -127,16 +134,22 @@ wxImage * EdgeDet(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *end
 					width+1]) 
 					);
 					
-					if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end)){
+					if(areaFilter){
+						if(inFilterArea(wxPoint(x, y), *start, *end)){
 							if(value<0)
 								value=0;
 							if(value>255)
 								value=64;
 							pResult[y*width+x]=(int)value;
-					}else
+						}else
 							pResult[y*width+x]=pTemp[y*width+x];
-					
-					
+					}else{
+						if(value<0)
+							value=0;
+						if(value>255)
+							value=64;
+						pResult[y*width+x]=(int)value;
+					}
    		    }
    		    else
    		    {
@@ -181,14 +194,22 @@ wxImage * Binarize(wxImage *pImage, bool areaFilter, wxPoint *start, wxPoint *en
 					width+1]) 
 					);
 					
-					if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end)){
+					if(areaFilter){
+						if(inFilterArea(wxPoint(x, y), *start, *end)){
+							if(value<127)
+								value=0;
+							if(value>127)
+								value=255;
+							pResult[y*width+x]=(int)value;
+						}else
+							pResult[y*width+x]=pTemp[y*width+x];
+					}else{
 						if(value<127)
 							value=0;
 						if(value>127)
 							value=255;
 						pResult[y*width+x]=(int)value;
-					}else
-						pResult[y*width+x]=pTemp[y*width+x];
+					}
    		    }
    		    else
    		    {
@@ -239,16 +260,22 @@ for ( x = 0 ; x < width ; x++) {
 				case MAXIMUM_FILTER : value = valArray [ 8 ] ; break ;
 			}
 			
-			
-			if(areaFilter && inFilterArea(wxPoint(x, y), *start, *end)){
+			if(areaFilter){
+				if(inFilterArea(wxPoint(x, y), *start, *end)){
+					if ( value > 255 )
+						value = 255;
+					else if ( value < 0 )
+						value = 0;
+					pResult [ index ] = ( int ) value;
+				}else
+					pResult[y*width+x]=pTemp[y*width+x];
+			}else{
 				if ( value > 255 )
 					value = 255;
 				else if ( value < 0 )
 					value = 0;
 				pResult [ index ] = ( int ) value;
-				}
-			else
-				pResult[y*width+x]=pTemp[y*width+x];
+			}
 			
          }
          else {
@@ -269,7 +296,7 @@ for ( x = 0 ; x < width ; x++) {
 bool inFilterArea(wxPoint needle, wxPoint start, wxPoint end)
 {
 	bool inXRange = needle.x < end.x && needle.x > start.x;
-	bool inYRange = needle.y < end.y - 25 && needle.y > start.y - 25;
+	bool inYRange = needle.y < end.y - toolheight && needle.y > start.y - toolheight;
 	
 	return inXRange && inYRange;
 }

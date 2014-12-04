@@ -40,4 +40,6 @@ wxImage* rotate(wxImage *pImage, bool right);
 wxImage* scale(wxImage *pImage, float factor);
 wxImage* mirror(wxImage *pImage);
 wxImage* rotateHue(wxImage *pImage, bool right);
+
+int static const toolheight = 50;
 #endif

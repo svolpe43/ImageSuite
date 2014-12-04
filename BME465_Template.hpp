@@ -84,6 +84,8 @@ class MyFrame : public wxFrame
 		bool areaFilter;
 		wxPoint* areaFilterStart;
 		wxPoint* areaFilterEnd;
+		
+		int static const toolheight = 50;
 };
 
 // constants
